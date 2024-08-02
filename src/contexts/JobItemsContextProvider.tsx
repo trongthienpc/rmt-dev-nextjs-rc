@@ -2,6 +2,7 @@
 import { RESULTS_PER_PAGE } from "@/lib/constants";
 import { useDebounce, useSearchQuery, useSearchTextContext } from "@/lib/hook";
 import { JobItem, PageDirection, SortBy } from "@/lib/types";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useMemo, useState } from "react";
 
 type JobItemsContextType = {
@@ -12,7 +13,6 @@ type JobItemsContextType = {
   totalNumberOfPages: number;
   currentPage: number;
   sortBy: SortBy;
-  handleChangePage: (direction: PageDirection) => void;
   handleChangeSortBy: (sortBy: SortBy) => void;
 };
 
@@ -23,15 +23,21 @@ export default function JobItemsContextProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { debouncedSearchText } = useSearchTextContext();
+  // const { debouncedSearchText } = useSearchTextContext();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const searchText = searchParams.get("query") || "";
+  const currentPage = Number(searchParams.get("page") || "1");
+  const sortBy = (searchParams.get("sortBy") as SortBy) || "relevant";
+
+  const debouncedSearchText = useDebounce(searchText, 500);
 
   const { isLoading, jobItems } = useSearchQuery(debouncedSearchText);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sortBy, setSortBy] = useState<SortBy>("relevant");
-
   const totalNumberOfResults = jobItems?.length || 0;
-  const totalNumberOfPages = totalNumberOfResults / RESULTS_PER_PAGE;
+  const totalNumberOfPages = Math.ceil(totalNumberOfResults / RESULTS_PER_PAGE);
+
   const jobItemsSorted = useMemo(
     () =>
       [...(jobItems || [])].sort((a, b) => {
@@ -53,21 +59,26 @@ export default function JobItemsContextProvider({
     [jobItemsSorted, currentPage]
   );
 
-  const handleChangePage = useCallback(
-    (direction: PageDirection) => {
-      if (direction === "next") {
-        setCurrentPage((prev) => Math.min(prev + 1, totalNumberOfPages));
-      } else if (direction === "previous") {
-        setCurrentPage((prev) => Math.max(prev - 1, 1));
-      }
-    },
-    [totalNumberOfPages]
-  );
+  // const handleChangePage = useCallback(
+  //   (direction: PageDirection) => {
+  //     if (direction === "next") {
+  //       setCurrentPage((prev) => Math.min(prev + 1, totalNumberOfPages));
+  //     } else if (direction === "previous") {
+  //       setCurrentPage((prev) => Math.max(prev - 1, 1));
+  //     }
+  //   },
+  //   [totalNumberOfPages]
+  // );
 
-  const handleChangeSortBy = useCallback((newSortBy: SortBy) => {
-    setCurrentPage(1);
-    setSortBy(newSortBy);
-  }, []);
+  const handleChangeSortBy = useCallback(
+    (newSortBy: SortBy) => {
+      const params = new URLSearchParams(searchParams);
+      params.set("sortBy", newSortBy);
+      params.set("page", "1");
+      router.push(`?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
 
   const contextValue = useMemo(
     () => ({
@@ -78,12 +89,10 @@ export default function JobItemsContextProvider({
       totalNumberOfResults,
       currentPage,
       sortBy,
-      handleChangePage,
       handleChangeSortBy,
     }),
     [
       currentPage,
-      handleChangePage,
       handleChangeSortBy,
       isLoading,
       jobItems,

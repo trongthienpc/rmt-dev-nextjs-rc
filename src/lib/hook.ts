@@ -37,6 +37,7 @@ export function useActiveId() {
   useEffect(() => {
     const handleHashChange = () => {
       const id = +window.location.hash.slice(1);
+      console.log("🚀 ~ handleHashChange ~ id:", id);
       setActiveId(id);
     };
     handleHashChange();

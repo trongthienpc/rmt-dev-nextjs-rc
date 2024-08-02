@@ -1,10 +1,25 @@
 "use client";
-import { useSearchTextContext } from "@/lib/hook";
-import { Search } from "lucide-react";
+import { useDebounce, useSearchTextContext } from "@/lib/hook";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React from "react";
 
 const SearchForm = () => {
   const { searchText, handleChangeSearchText } = useSearchTextContext();
+
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
+  function handleSearch(term: string) {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", "1");
+    if (term) {
+      params.set("query", term);
+    } else {
+      params.delete("query");
+    }
+
+    replace(`${pathname}?${params.toString()}`);
+  }
   return (
     <form
       onSubmit={(e) => {
@@ -18,10 +33,10 @@ const SearchForm = () => {
       </button>
 
       <input
-        value={searchText}
         onChange={(e) => {
-          handleChangeSearchText(e.target.value);
+          handleSearch(e.target.value);
         }}
+        defaultValue={searchParams.get("query")?.toString() || ""}
         spellCheck="false"
         type="text"
         required
